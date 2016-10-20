@@ -4,7 +4,7 @@ import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 
 /**
- * Created by Adriaan on 2016/09/20.
+ * Created by Adriaan on 2016/09/20
  */
 public class SnakeGame extends JPanel
 {
