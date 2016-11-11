@@ -2,7 +2,7 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="42805014-0693-4fae-a72e-f60ba09df4af" name="Default" comment="">
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/workspace.xml" afterPath="$PROJECT_DIR$/.idea/workspace.xml" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/src/GeneticTraining.java" afterPath="$PROJECT_DIR$/src/GeneticTraining.java" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/src/SnakeGame.java" afterPath="$PROJECT_DIR$/src/SnakeGame.java" />
     </list>
     <ignored path="WRCI_ass5.iws" />
@@ -24,11 +24,11 @@
   </component>
   <component name="FileEditorManager">
     <leaf SIDE_TABS_SIZE_LIMIT_KEY="300">
-      <file leaf-file-name="SnakeGame.java" pinned="false" current-in-tab="false">
+      <file leaf-file-name="SnakeGame.java" pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/src/SnakeGame.java">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="-1751">
-              <caret line="168" column="21" selection-start-line="168" selection-start-column="21" selection-end-line="168" selection-end-column="21" />
+            <state relative-caret-position="663">
+              <caret line="442" column="32" selection-start-line="442" selection-start-column="32" selection-end-line="442" selection-end-column="32" />
               <folding>
                 <element signature="imports" expanded="true" />
               </folding>
@@ -36,11 +36,11 @@
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="GeneticTraining.java" pinned="false" current-in-tab="true">
+      <file leaf-file-name="GeneticTraining.java" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/src/GeneticTraining.java">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="85">
-              <caret line="5" column="4" selection-start-line="5" selection-start-column="4" selection-end-line="5" selection-end-column="4" />
+            <state relative-caret-position="119">
+              <caret line="7" column="0" selection-start-line="7" selection-start-column="0" selection-end-line="7" selection-end-column="0" />
               <folding />
             </state>
           </provider>
@@ -126,8 +126,8 @@
         <option value="$PROJECT_DIR$/src/neuralNetWork.java" />
         <option value="$PROJECT_DIR$/src/Main.java" />
         <option value="$PROJECT_DIR$/src/Console.java" />
-        <option value="$PROJECT_DIR$/src/SnakeGame.java" />
         <option value="$PROJECT_DIR$/src/GeneticTraining.java" />
+        <option value="$PROJECT_DIR$/src/SnakeGame.java" />
       </list>
     </option>
   </component>
@@ -832,21 +832,21 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/src/SnakeGame.java">
+    <entry file="file://$PROJECT_DIR$/src/GeneticTraining.java">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="-1751">
-          <caret line="168" column="21" selection-start-line="168" selection-start-column="21" selection-end-line="168" selection-end-column="21" />
-          <folding>
-            <element signature="imports" expanded="true" />
-          </folding>
+        <state relative-caret-position="119">
+          <caret line="7" column="0" selection-start-line="7" selection-start-column="0" selection-end-line="7" selection-end-column="0" />
+          <folding />
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/src/GeneticTraining.java">
+    <entry file="file://$PROJECT_DIR$/src/SnakeGame.java">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="85">
-          <caret line="5" column="4" selection-start-line="5" selection-start-column="4" selection-end-line="5" selection-end-column="4" />
-          <folding />
+        <state relative-caret-position="663">
+          <caret line="442" column="32" selection-start-line="442" selection-start-column="32" selection-end-line="442" selection-end-column="32" />
+          <folding>
+            <element signature="imports" expanded="true" />
+          </folding>
         </state>
       </provider>
     </entry>

@@ -97,22 +97,26 @@ public class SnakeGame extends JPanel
 
     public void runGame() throws InterruptedException
     {
+        //console lets us see the result from each iteration
         Console console = new Console();
+        //the first while loop runs on the iteration of each game. at the end of each iteration info is passed back and fourth to the GA.
         while (iterationCounter < 1000)
         {
+            //set up the NN with the info from the GA
             neuralNetWork NN = new neuralNetWork();
+            //restart stall counter.
             restartTimer();
 
-
+            //this while loop runs the actual game within each iteration.
             while (inGame)
             {
-                TimeUnit.MILLISECONDS.sleep(50);
-                checkEatenApple();
+                TimeUnit.MILLISECONDS.sleep(50); //so we can see what the snake is doing. reduce this to make the snake go faster.
+                checkEatenApple(); //did the snake find food? if so increase its length and reset the stall counter.
                 if (getElapsedTime() > 4000)
-                    inGame = false;
+                    inGame = false; //go to the next game iteration if the game stalls.
 
-                double[] inputs = getInputs();
-                int Move = NN.getNextMove(inputs);
+                double[] inputs = getInputs(); //get new inputs for the NN for the next move.
+                int Move = NN.getNextMove(inputs); //calculate the next move.
                 // this is tricky
                 //if the NN decides the snake should go left when it was moving in a right direction (illegal move) I can't just stop it from making that move, because on the next iteration, the NN will get the same inputs and then make the same decision as the last illegal move.
                 if ((Move == 0) && (!rightDirection)) //move left
@@ -140,13 +144,15 @@ public class SnakeGame extends JPanel
                     leftDirection = false;
                 }
 
-                handleMovement();
-                checkForCollision();
-                repaint();
+                handleMovement(); //actually move the snake.
+                checkForCollision(); //did the snake collide with anything? wall or body.
+                repaint(); //refresh screen.
             }
 
+            //use the console to update what happened in the current iteration.
             console.addToConsole("Iteation: " + iterationCounter + "  Length: " + snakeLength);
             iterationCounter++;
+            //initialize the next iteration
             initializeImages();
             initializeGame();
         }
@@ -169,22 +175,26 @@ public class SnakeGame extends JPanel
         placeApple();
     }
 
+    //pop up message method - currently not being used.
     public static void infoBox(String infoMessage)
     {
         JOptionPane.showMessageDialog(null, infoMessage, "Snake", JOptionPane.INFORMATION_MESSAGE);
     }
 
+    //resets the timer if the snake finds food.
     private static void restartTimer()
     {
         startTime = System.currentTimeMillis();
     }
 
+    //used to check if the snake is stalling.
     private static long getElapsedTime()
     {
         elapsedTime = (new Date()).getTime() - startTime;
         return elapsedTime;
     }
 
+    //this is what gets passed to the NN for it to make a decision
     public double[] getInputs()
     {
         double inputs[] = new double[15];
@@ -220,8 +230,9 @@ public class SnakeGame extends JPanel
         return inputs;
     }
 
+    //for the NN inputs
     private static void updatePostitions() {
-        //get the
+        //get the length of the snake
         int sizeXandY = 0;
 
         for (int i : x)
@@ -229,7 +240,7 @@ public class SnakeGame extends JPanel
                 sizeXandY++;
             else
                 break;
-
+        //set snake body info
         headBody.setX(x[0]);
         headBody.setY(y[0]);
         Double halfPos = Math.floor(sizeXandY / 2);
@@ -421,6 +432,7 @@ public class SnakeGame extends JPanel
         imgApple = tempIcon.getImage();
     }
 
+    //this is not used anymore as snake controls itself.
     private class TAdapter extends KeyAdapter
     {
         //what to do when a key is pressed.
