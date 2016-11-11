@@ -3,6 +3,8 @@ import java.awt.*;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.util.ArrayList;
+import java.util.Date;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Created by Adriaan on 2016/09/20
@@ -31,6 +33,7 @@ public class SnakeGame extends JPanel
     private static int foodX;
     private static int foodY;
     private static int snakeLength;
+    private static int iterationCounter;
 
     //images to use
     private static Image imgBody;
@@ -46,6 +49,12 @@ public class SnakeGame extends JPanel
     private static boolean rightDirFree;
     private static boolean upDirFree;
     private static boolean downDirFree;
+
+    //timer
+    private static long startTime;
+    private static long elapsedTime;
+
+    public static SnakeGame snakeGame;
 
 //    private Timer timer;
 //    private final int DELAY = 140;
@@ -74,6 +83,81 @@ public class SnakeGame extends JPanel
 
         initializeImages();
         initializeGame();
+//        try
+//        {
+//            runGame();
+//        }
+//        catch (InterruptedException e)
+//        {
+//            e.printStackTrace();
+//        }
+    }
+
+    public static SnakeGame getClassInstance()
+    {
+        if (snakeGame == null)
+        {
+            snakeGame = new SnakeGame();
+            return snakeGame;
+        }
+        return snakeGame;
+}
+
+    public void runGame() throws InterruptedException {
+        while (iterationCounter < 1000)
+        {
+            neuralNetWork NN = new neuralNetWork();
+            restartTimer();
+
+            while (getElapsedTime() < 2000)
+            {
+
+                if (!inGame) {
+                    iterationCounter++;
+                }
+                else
+                {
+                    TimeUnit.MILLISECONDS.sleep(300);
+                    checkEatenApple();
+                    double[] inputs = getInputs();
+                    int Move = NN.getNextMove(inputs);
+                    if (Move == 0) //move left
+                    {
+                        leftDirection = true;
+                        upDirection = false;
+                        downDirection = false;
+                    }
+                    else if (Move == 1) //move right
+                    {
+                        rightDirection = true;
+                        upDirection = false;
+                        downDirection = false;
+                    }
+                    else if (Move == 2) //move up
+                    {
+                        upDirection = true;
+                        rightDirection = false;
+                        leftDirection = false;
+                    }
+                    else //move down
+                    {
+                        downDirection = true;
+                        rightDirection = false;
+                        leftDirection = false;
+                    }
+
+                    handleMovement();
+                    checkForCollision();
+                    repaint();
+                    restartTimer();
+                }
+
+
+            }
+
+            if (inGame)
+                inGame = false;
+        }
     }
 
     //start with a length of 3. place the food on the board.
@@ -90,12 +174,64 @@ public class SnakeGame extends JPanel
         }
         placeApple();
 
+
+
 //        timer = new Timer(DELAY, this);
 //        timer.start();
     }
 
-    private static void updatePostitions()
+    public static void infoBox(String infoMessage)
     {
+        JOptionPane.showMessageDialog(null, infoMessage, "Snake", JOptionPane.INFORMATION_MESSAGE);
+    }
+
+    private static void restartTimer()
+    {
+        startTime = System.currentTimeMillis();
+    }
+
+    private static long getElapsedTime()
+    {
+        elapsedTime = (new Date()).getTime() - startTime;
+        return elapsedTime;
+    }
+
+    public double[] getInputs()
+    {
+        double inputs[] = new double[15];
+        inputs[0]  = headBody.getX();
+        inputs[1]  = headBody.getY();
+        inputs[2]  = midBody.getX();
+        inputs[3]  = midBody.getY();
+        inputs[4]  = tailBody.getX();
+        inputs[5]  = tailBody.getY();
+        inputs[6]  = foodX;
+        inputs[7]  = foodY;
+        double distToFoodX = Math.abs(headBody.getX() - foodX);
+        inputs[8]  = distToFoodX;
+        double distToFoodY = Math.abs(headBody.getY() - foodY);
+        inputs[9]  = distToFoodY;
+        double L = 0.0;
+        double R = 0.0;
+        double U = 0.0;
+        double D = 0.0;
+        if (leftDirFree)
+            L = 1.0;
+        if (rightDirFree)
+            R = 1.0;
+        if (upDirFree)
+            U = 1.0;
+        if (downDirFree)
+            D = 1.0;
+        inputs[10] = L;
+        inputs[11] = R;
+        inputs[12] = U;
+        inputs[13] = D;
+        inputs[14] = -1.0;
+        return inputs;
+    }
+
+    private static void updatePostitions() {
         //get the
         int sizeXandY = 0;
 
@@ -107,11 +243,11 @@ public class SnakeGame extends JPanel
 
         headBody.setX(x[0]);
         headBody.setY(y[0]);
-        Double halfPos = Math.floor(sizeXandY/2);
+        Double halfPos = Math.floor(sizeXandY / 2);
         midBody.setX(x[halfPos.intValue()]);
         midBody.setY(y[halfPos.intValue()]);
-        tailBody.setX(x[sizeXandY-1]);
-        tailBody.setY(y[sizeXandY-1]);
+        tailBody.setX(x[sizeXandY - 1]);
+        tailBody.setY(y[sizeXandY - 1]);
 
         foodXY.setX(foodX);
         foodXY.setY(foodY);
@@ -143,8 +279,7 @@ public class SnakeGame extends JPanel
         //check to the left
         int tempX = x[0];
         int tempY = y[0];
-        if (leftDirFree)
-        {
+        if (leftDirFree) {
             int tempXX = tempX - DOT_SIZE;
             for (int i = dots; i > 0; i--)
                 if ((i > 0) && (tempXX == x[i]) && (tempY == y[i])) {
@@ -152,8 +287,7 @@ public class SnakeGame extends JPanel
                     break;
                 }
         }
-        if (rightDirFree)
-        {
+        if (rightDirFree) {
             int tempXX = tempX + DOT_SIZE;
             for (int i = dots; i > 0; i--)
                 if ((i > 0) && (tempXX == x[i]) && (tempY == y[i])) {
@@ -161,8 +295,7 @@ public class SnakeGame extends JPanel
                     break;
                 }
         }
-        if (upDirFree)
-        {
+        if (upDirFree) {
             int tempYY = tempY - DOT_SIZE;
             for (int i = dots; i > 0; i--)
                 if ((i > 0) && (tempX == x[i]) && (tempYY == y[i])) {
@@ -170,8 +303,7 @@ public class SnakeGame extends JPanel
                     break;
                 }
         }
-        if (downDirFree)
-        {
+        if (downDirFree) {
             int tempYY = tempY + DOT_SIZE;
             for (int i = dots; i > 0; i--)
                 if ((i > 0) && (tempX == x[i]) && (tempYY == y[i])) {
@@ -179,8 +311,6 @@ public class SnakeGame extends JPanel
                     break;
                 }
         }
-
-
     }
 
     //drawing method that handles the changing and updting of pixels

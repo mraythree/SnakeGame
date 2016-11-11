@@ -5,9 +5,11 @@ import javax.swing.*;
  */
 public class Main extends JFrame
 {
+    public static SnakeGame snakeGame;
     public Main()
     {
-        add(new SnakeGame());
+        snakeGame = SnakeGame.getClassInstance();
+        add(snakeGame);
         setResizable(false); //we don't want to let the user resize the window
         pack(); //take the dimensions of the frame we are loading
         setTitle("Snake Being Trained"); //we should be the generation number in the title.
@@ -19,5 +21,13 @@ public class Main extends JFrame
     {
         JFrame ex = new Main();
         ex.setVisible(true);
+        try
+        {
+            snakeGame.runGame();
+        }
+        catch (InterruptedException e)
+        {
+            e.printStackTrace();
+        }
     }
 }
