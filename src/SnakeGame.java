@@ -83,14 +83,6 @@ public class SnakeGame extends JPanel
 
         initializeImages();
         initializeGame();
-//        try
-//        {
-//            runGame();
-//        }
-//        catch (InterruptedException e)
-//        {
-//            e.printStackTrace();
-//        }
     }
 
     public static SnakeGame getClassInstance()
@@ -103,67 +95,69 @@ public class SnakeGame extends JPanel
         return snakeGame;
 }
 
-    public void runGame() throws InterruptedException {
+    public void runGame() throws InterruptedException
+    {
+        Console console = new Console();
         while (iterationCounter < 1000)
         {
             neuralNetWork NN = new neuralNetWork();
             restartTimer();
 
-            while (getElapsedTime() < 2000)
+
+            while (inGame)
             {
+                TimeUnit.MILLISECONDS.sleep(50);
+                checkEatenApple();
+                if (getElapsedTime() > 4000)
+                    inGame = false;
 
-                if (!inGame) {
-                    iterationCounter++;
-                }
-                else
+                double[] inputs = getInputs();
+                int Move = NN.getNextMove(inputs);
+                // this is tricky
+                //if the NN decides the snake should go left when it was moving in a right direction (illegal move) I can't just stop it from making that move, because on the next iteration, the NN will get the same inputs and then make the same decision as the last illegal move.
+                if ((Move == 0) && (!rightDirection)) //move left
                 {
-                    TimeUnit.MILLISECONDS.sleep(300);
-                    checkEatenApple();
-                    double[] inputs = getInputs();
-                    int Move = NN.getNextMove(inputs);
-                    if (Move == 0) //move left
-                    {
-                        leftDirection = true;
-                        upDirection = false;
-                        downDirection = false;
-                    }
-                    else if (Move == 1) //move right
-                    {
-                        rightDirection = true;
-                        upDirection = false;
-                        downDirection = false;
-                    }
-                    else if (Move == 2) //move up
-                    {
-                        upDirection = true;
-                        rightDirection = false;
-                        leftDirection = false;
-                    }
-                    else //move down
-                    {
-                        downDirection = true;
-                        rightDirection = false;
-                        leftDirection = false;
-                    }
-
-                    handleMovement();
-                    checkForCollision();
-                    repaint();
-                    restartTimer();
+                    leftDirection = true;
+                    upDirection = false;
+                    downDirection = false;
+                }
+                else if ((Move == 1) && (!leftDirection)) //move right
+                {
+                    rightDirection = true;
+                    upDirection = false;
+                    downDirection = false;
+                }
+                else if ((Move == 2) && (!downDirection)) //move up
+                {
+                    upDirection = true;
+                    rightDirection = false;
+                    leftDirection = false;
+                }
+                else if ((Move == 3) && (!upDirection))//move down
+                {
+                    downDirection = true;
+                    rightDirection = false;
+                    leftDirection = false;
                 }
 
-
+                handleMovement();
+                checkForCollision();
+                repaint();
             }
 
-            if (inGame)
-                inGame = false;
+            console.addToConsole("Iteation: " + iterationCounter + "  Length: " + snakeLength);
+            iterationCounter++;
+            initializeImages();
+            initializeGame();
         }
+
     }
 
     //start with a length of 3. place the food on the board.
     // -> we don't have a check if the food is on the body at this point -> we need to ensure that the food does not intercept the body on initialization.
     private void initializeGame()
     {
+        inGame = true;
         dots = 3;
         rightDirection = true;
         //place the width and height of the pixels for each "dot"/length of body. the paint method will take care of the rest.
@@ -173,11 +167,6 @@ public class SnakeGame extends JPanel
             y[i] = 50;
         }
         placeApple();
-
-
-
-//        timer = new Timer(DELAY, this);
-//        timer.start();
     }
 
     public static void infoBox(String infoMessage)
@@ -408,6 +397,7 @@ public class SnakeGame extends JPanel
             dots++;
             snakeLength++;
             placeApple();
+            restartTimer();
         }
     }
 
