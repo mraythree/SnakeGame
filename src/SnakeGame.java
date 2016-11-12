@@ -18,6 +18,13 @@ public class SnakeGame extends JPanel
     private static final int ALL_DOTS = 600;
     private static final int randomPos = 27; //seed value for randoms
 
+    //pulic static vars
+    public static int noInputsNeurons = 15;
+    public static int noHiddenNeurons = 5;
+    public static int noOutputNeurons = 4;
+    public static int minSearchSpace = -10000;
+    public static int maxSearchSpace = 10000;
+
     //size of board
     private static final int x[] = new int[ALL_DOTS];
     private static final int y[] = new int[ALL_DOTS];
@@ -34,6 +41,13 @@ public class SnakeGame extends JPanel
     private static int foodY;
     private static int snakeLength;
     private static int iterationCounter;
+
+    //mins and maxes for normalization
+    private static double maxX;
+    private static double maxY;
+    private static double minY;
+    private static double minX;
+
 
     //images to use
     private static Image imgBody;
@@ -100,19 +114,23 @@ public class SnakeGame extends JPanel
         //console lets us see the result from each iteration
         Console console = new Console();
         //the first while loop runs on the iteration of each game. at the end of each iteration info is passed back and fourth to the GA.
-        while (iterationCounter < 1000)
+        GeneticTraining GA = new GeneticTraining(50); //takes in the population size
+        iterationCounter = 0;
+        while (iterationCounter < 100000)
         {
             //set up the NN with the info from the GA
             neuralNetWork NN = new neuralNetWork();
             //restart stall counter.
             restartTimer();
+            snakeLength = 3;
 
             //this while loop runs the actual game within each iteration.
             while (inGame)
             {
-                TimeUnit.MILLISECONDS.sleep(50); //so we can see what the snake is doing. reduce this to make the snake go faster.
+                if (iterationCounter % 1000 == 0)
+                    TimeUnit.MILLISECONDS.sleep(400); //so we can see what the snake is doing. reduce this to make the snake go faster.
                 checkEatenApple(); //did the snake find food? if so increase its length and reset the stall counter.
-                if (getElapsedTime() > 4000)
+                if (getElapsedTime() > 100 && (iterationCounter % 1000 != 0))
                     inGame = false; //go to the next game iteration if the game stalls.
 
                 double[] inputs = getInputs(); //get new inputs for the NN for the next move.
@@ -146,7 +164,8 @@ public class SnakeGame extends JPanel
 
                 handleMovement(); //actually move the snake.
                 checkForCollision(); //did the snake collide with anything? wall or body.
-                repaint(); //refresh screen.
+                if (iterationCounter % 1000 == 0)
+                    repaint(); //refresh screen.
             }
 
             //use the console to update what happened in the current iteration.
@@ -227,7 +246,55 @@ public class SnakeGame extends JPanel
         inputs[12] = U;
         inputs[13] = D;
         inputs[14] = -1.0;
+
+        normalizeInputs(inputs);
+
         return inputs;
+    }
+
+    private void normalizeInputs(double[] inputs)
+    {
+        maxX = -1;
+        maxY = -1;
+        minX = 999999;
+        minY = 999999;
+        for (int i = 0; i <= 9; i++)
+        {
+            if (i % 2 == 0)
+            {
+                if (inputs[i] > maxX)
+                    maxX = inputs[i];
+                if (inputs[i] < minX)
+                    minX = inputs[i];
+            }
+            else
+            {
+                if (inputs[i] > maxY)
+                    maxY = inputs[i];
+                if (inputs[i] < minY)
+                    minY = inputs[i];
+            }
+        }
+        for (int i = 0; i <= 9; i++)
+        {
+            double numerator;
+            double demoninator;
+            double normalized;
+            if (i % 2 == 0)
+            {
+                numerator = inputs[i] - minX;
+                demoninator = maxX - minX;
+                normalized = numerator / demoninator;
+                inputs[i] = normalized;
+            }
+            else
+            {
+                numerator = inputs[i] - minY;
+                demoninator = maxY - minY;
+                normalized = numerator / demoninator;
+                inputs[i] = normalized;
+            }
+        }
     }
 
     //for the NN inputs

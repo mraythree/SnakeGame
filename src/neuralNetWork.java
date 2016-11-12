@@ -11,9 +11,9 @@ public class neuralNetWork
 
     public neuralNetWork()
     {
-        noInputsNeurons = 15; //head x and y, mid x and y, tail x and y, is space free in the direction left, right up and down, food x and y, distance to food x and y, bias;
-        noHiddenNeurons = 5;
-        noOutputNeurons = 4;
+        noInputsNeurons = SnakeGame.noInputsNeurons; //head x and y, mid x and y, tail x and y, is space free in the direction left, right up and down, food x and y, distance to food x and y, bias;
+        noHiddenNeurons = SnakeGame.noHiddenNeurons;
+        noOutputNeurons = SnakeGame.noOutputNeurons;
         vWeights = new double[noHiddenNeurons][noInputsNeurons]; //2D array for weights going from every input node, to every hidden node.
         wWeights = new double[noOutputNeurons][noHiddenNeurons]; //2D array for weights going from every hidden node to every output node
 
