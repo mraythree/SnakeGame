@@ -4,6 +4,7 @@ import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.Random;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -19,7 +20,7 @@ public class SnakeGame extends JPanel
     private static final int randomPos = 27; //seed value for randoms
 
     //pulic static vars
-    public static int noInputsNeurons = 15;
+    public static int noInputsNeurons = 11;
     public static int noHiddenNeurons = 5;
     public static int noOutputNeurons = 4;
     public static int minSearchSpace = -10000;
@@ -40,7 +41,11 @@ public class SnakeGame extends JPanel
     private static int foodX;
     private static int foodY;
     private static int snakeLength;
+    private static int maxSnakeLength;
     private static int iterationCounter;
+    private static int applesEaten;
+    public static int stepsTaken;
+    public static int stepsTakenSinceLastFood;
 
     //mins and maxes for normalization
     private static double maxX;
@@ -56,8 +61,8 @@ public class SnakeGame extends JPanel
 
     //positions of things
     private static XYPair headBody;
-    private static XYPair midBody;
-    private static XYPair tailBody;
+//    private static XYPair midBody;
+//    private static XYPair tailBody;
     private static XYPair foodXY;
     private static boolean leftDirFree;
     private static boolean rightDirFree;
@@ -65,8 +70,11 @@ public class SnakeGame extends JPanel
     private static boolean downDirFree;
 
     //timer
-    private static long startTime;
-    private static long elapsedTime;
+    private static long timeSinceLastFood;
+    private static long elapsedTimeSinceLastFood;
+    private static long gameTime;
+    private static long elapsedGameTime;
+    private static boolean invalidMove;
 
     public static SnakeGame snakeGame;
 
@@ -77,15 +85,11 @@ public class SnakeGame extends JPanel
     public SnakeGame()
     {
         //initialize variables
-        leftDirection = false;
-        rightDirection = false;
-        upDirection = false;
-        downDirection = false;
         inGame = true;
         snakeLength = 3;
         headBody = new XYPair(0,0);
-        midBody = new XYPair(0,0);
-        tailBody = new XYPair(0,0);
+//        midBody = new XYPair(0,0);
+//        tailBody = new XYPair(0,0);
         foodXY = new XYPair(0,0);
 
         //put the key listener in
@@ -94,7 +98,11 @@ public class SnakeGame extends JPanel
         setBackground(Color.black);
         setFocusable(true);
         setPreferredSize(new Dimension(boarderWidth, boarderHeight));
-
+        iterationCounter = 0;
+        applesEaten = 0;
+        stepsTaken = 0;
+        stepsTakenSinceLastFood = 0;
+        invalidMove = false;
         initializeImages();
         initializeGame();
     }
@@ -112,70 +120,132 @@ public class SnakeGame extends JPanel
     public void runGame() throws InterruptedException
     {
         //console lets us see the result from each iteration
-        Console console = new Console();
+       // Console console = new Console();
         //the first while loop runs on the iteration of each game. at the end of each iteration info is passed back and fourth to the GA.
-        GeneticTraining GA = new GeneticTraining(50); //takes in the population size
+        GeneticTraining ga = new GeneticTraining(50); //takes in the population size
+        //set up the NN with the info from the GA
+        neuralNetWork NN = new neuralNetWork();
+        Chromosone c;
         iterationCounter = 0;
+        maxSnakeLength = 3;
         while (iterationCounter < 100000)
         {
-            //set up the NN with the info from the GA
-            neuralNetWork NN = new neuralNetWork();
+            c = ga.getCurChromosone();
+            NN.setWeightsOfNN(c.getvWeights(), c.getwWeights());
+
             //restart stall counter.
-            restartTimer();
+            restartFoodTimer();
+            restartGameTimer();
             snakeLength = 3;
+            applesEaten = 0;
+            if (iterationCounter % 20000 == 0)
+                System.out.println("Max length achieved so far: " + maxSnakeLength);
 
             //this while loop runs the actual game within each iteration.
             while (inGame)
             {
-                if (iterationCounter % 1000 == 0)
-                    TimeUnit.MILLISECONDS.sleep(400); //so we can see what the snake is doing. reduce this to make the snake go faster.
-                checkEatenApple(); //did the snake find food? if so increase its length and reset the stall counter.
-                if (getElapsedTime() > 100 && (iterationCounter % 1000 != 0))
-                    inGame = false; //go to the next game iteration if the game stalls.
+                if (iterationCounter % 20000 == 0 || snakeLength > 25)
+                    TimeUnit.MILLISECONDS.sleep(100); //so we can see what the snake is doing. reduce this to make the snake go faster.
+
+
+//                if (getElapsedTimeSinceLastFood() > 100)
+//                    inGame = false; //go to the next game iteration if the game stalls.
+//                if (getElapsedTimeSinceLastFood() > 1000 && (iterationCounter % 1000 != 0))
+//                    inGame = false; //go to the next game iteration if the game stalls.
+//                else if (getElapsedTimeSinceLastFood() > 10000 && iterationCounter % 1000 == 0)
+//                    inGame = false;
+                if (invalidMove)
+                    inGame = false;
 
                 double[] inputs = getInputs(); //get new inputs for the NN for the next move.
-                int Move = NN.getNextMove(inputs); //calculate the next move.
-                // this is tricky
-                //if the NN decides the snake should go left when it was moving in a right direction (illegal move) I can't just stop it from making that move, because on the next iteration, the NN will get the same inputs and then make the same decision as the last illegal move.
-                if ((Move == 0) && (!rightDirection)) //move left
-                {
-                    leftDirection = true;
-                    upDirection = false;
-                    downDirection = false;
-                }
-                else if ((Move == 1) && (!leftDirection)) //move right
-                {
-                    rightDirection = true;
-                    upDirection = false;
-                    downDirection = false;
-                }
-                else if ((Move == 2) && (!downDirection)) //move up
-                {
-                    upDirection = true;
-                    rightDirection = false;
-                    leftDirection = false;
-                }
-                else if ((Move == 3) && (!upDirection))//move down
-                {
-                    downDirection = true;
-                    rightDirection = false;
-                    leftDirection = false;
-                }
+                int curDir = 0;
+                if (leftDirection)
+                    curDir = 1;
+                else if (rightDirection)
+                    curDir = 0;
+                else if (upDirection)
+                    curDir = 3;
+                else if (downDirection)
+                    curDir = 2;
+                int Move = NN.getNextMove(curDir, inputs); //calculate the next move.
+
+                managemove(Move); //change the direction
 
                 handleMovement(); //actually move the snake.
+                checkEatenApple(); //did the snake find food? if so increase its length and reset the stall counter.
+                if (stepsTakenSinceLastFood > 130)
+                {
+                    inGame = false;
+                    c.stalled = true;
+                }
                 checkForCollision(); //did the snake collide with anything? wall or body.
-                if (iterationCounter % 1000 == 0)
+                if (iterationCounter % 20000 == 0 || snakeLength > 25)
                     repaint(); //refresh screen.
             }
-
+            c.setFitness(getElapsedGameTime(), snakeLength);
             //use the console to update what happened in the current iteration.
-            console.addToConsole("Iteation: " + iterationCounter + "  Length: " + snakeLength);
+            //console.addToConsole("Iteation: " + iterationCounter + "  Length: " + snakeLength);
+            System.out.println("Iteation: " + iterationCounter + "  Length: " + snakeLength);
+            if (snakeLength > maxSnakeLength)
+                maxSnakeLength = snakeLength;
             iterationCounter++;
+            //if ((iterationCounter % ga.populationSize == 0) && (iterationCounter != 0))
+            if (iterationCounter % ga.populationSize == 0)
+                ga.Train();
+            //move onto the next chromosone. this wraps around to the beginning once the population size is reached.
+            ga.incCurChromosone();
             //initialize the next iteration
-            initializeImages();
             initializeGame();
         }
 
+    }
+
+    private void managemove(int Move)
+    {
+
+        if ((Move == 0) && (rightDirection)) //move left
+        {
+            invalidMove = true;
+        }
+        else if ((Move == 1) && (leftDirection)) //move left
+        {
+            invalidMove = true;
+        }
+        else if ((Move == 2) && (downDirection)) //move left
+        {
+            invalidMove = true;
+        }
+        else if ((Move == 3) && (upDirection)) //move left
+        {
+            invalidMove = true;
+        }
+
+        // this is tricky
+        //if the NN decides the snake should go left when it was moving in a right direction (illegal move) I can't just stop it from making that move, because on the next iteration, the NN will get the same inputs and then make the same decision as the last illegal move.
+        if ((Move == 0) && (!rightDirection)) //move left
+        {
+            leftDirection = true;
+            upDirection = false;
+            downDirection = false;
+        }
+        else if ((Move == 1) && (!leftDirection)) //move right
+        {
+            rightDirection = true;
+            upDirection = false;
+            downDirection = false;
+        }
+        else if ((Move == 2) && (!downDirection)) //move up
+        {
+            upDirection = true;
+            rightDirection = false;
+            leftDirection = false;
+        }
+        else if ((Move == 3) && (!upDirection))//move down
+        {
+            downDirection = true;
+            rightDirection = false;
+            leftDirection = false;
+        }
     }
 
     //start with a length of 3. place the food on the board.
@@ -184,14 +254,105 @@ public class SnakeGame extends JPanel
     {
         inGame = true;
         dots = 3;
-        rightDirection = true;
+//        rightDirection = true;
+        leftDirection = false;
+        rightDirection = false;
+        upDirection = false;
+        downDirection = false;
+        stepsTaken = 0;
+        stepsTakenSinceLastFood = 0;
+        invalidMove = false;
         //place the width and height of the pixels for each "dot"/length of body. the paint method will take care of the rest.
-        for (int i = 0; i <= dots -1; i++)
+//        for (int i = 0; i <= dots -1; i++)
+//        {
+//            x[i] = 50 - i * 15;
+//            y[i] = 50;
+//        }
+
+        //snake needs to start in a random pos
+        //pick direction
+        int dir = randomInt0and3() + 1;
+        int headpos = randomInt0and25();
+        if (dir == 1) //going right
         {
-            x[i] = 50 - i * 15;
-            y[i] = 50;
+            rightDirection = true;
+            x[0] = headpos;
+            y[0] = headpos;
+            x[1] = headpos - 15;
+            y[1] = headpos;
+            x[2] = headpos - 30;
+            y[2] = headpos;
+//            for (int i = 0; i <= dots -1; i++)
+//            {
+//                x[i] = headpos - i * 15;
+//                y[i] = headpos;
+//            }
+        }
+        else if (dir == 2) //going left
+        {
+            leftDirection = true;
+            x[0] = headpos;
+            y[0] = headpos;
+            x[1] = headpos + 15;
+            y[1] = headpos;
+            x[2] = headpos + 30;
+            y[2] = headpos;
+//            for (int i = 0; i <= dots -1; i++)
+//            {
+//                x[i] = headpos + i * 15;
+//                y[i] = headpos;
+//            }
+        }
+        else if (dir == 3) //going up
+        {
+            upDirection = true;
+            x[0] = headpos;
+            y[0] = headpos;
+            x[1] = headpos;
+            y[1] = headpos + 15;
+            x[2] = headpos;
+            y[2] = headpos + 30;
+//            for (int i = 0; i <= dots -1; i++)
+//            {
+//                x[i] = headpos;
+//                y[i] = headpos + i * 15;
+//            }
+        }
+        else if (dir == 4) //going down
+        {
+            downDirection = true;
+//            for (int i = 0; i <= dots -1; i++)
+//            {
+//                x[i] = headpos;
+//                y[i] = headpos - i * 15;
+//            }
+            x[0] = headpos;
+            y[0] = headpos;
+            x[1] = headpos;
+            y[1] = headpos - 15;
+            x[2] = headpos;
+            y[2] = headpos - 30;
         }
         placeApple();
+        updatePostitions();
+    }
+
+    public int randomInt0and25()
+    {
+        Random r = new Random();
+        int min = 3;
+        int max = 21;
+        int randomVal = r.nextInt((max - min)) + min;
+        return (randomVal * 15) + 5;
+    }
+
+    public int randomInt0and3()
+    {
+        Random r = new Random();
+        int min = 0;
+        int max = 4;
+        int randomVal = r.nextInt((max - min)) + min;
+        return randomVal;
     }
 
     //pop up message method - currently not being used.
@@ -201,34 +362,78 @@ public class SnakeGame extends JPanel
     }
 
     //resets the timer if the snake finds food.
-    private static void restartTimer()
+    private static void restartFoodTimer()
     {
-        startTime = System.currentTimeMillis();
+        timeSinceLastFood = System.currentTimeMillis();
     }
 
     //used to check if the snake is stalling.
-    private static long getElapsedTime()
+    private static long getElapsedTimeSinceLastFood()
     {
-        elapsedTime = (new Date()).getTime() - startTime;
-        return elapsedTime;
+        elapsedTimeSinceLastFood = (new Date()).getTime() - timeSinceLastFood;
+        return elapsedTimeSinceLastFood;
+    }
+
+    private static void restartGameTimer()
+    {
+        gameTime = System.currentTimeMillis();
+    }
+
+    private static long getElapsedGameTime()
+    {
+        elapsedGameTime = (new Date()).getTime() - gameTime;
+        return elapsedGameTime;
     }
 
     //this is what gets passed to the NN for it to make a decision
+//    public double[] getInputs()
+//    {
+//        double inputs[] = new double[15];
+//        inputs[0]  = headBody.getX();
+//        inputs[1]  = headBody.getY();
+//        inputs[2]  = midBody.getX();
+//        inputs[3]  = midBody.getY();
+//        inputs[4]  = tailBody.getX();
+//        inputs[5]  = tailBody.getY();
+//        inputs[6]  = foodX;
+//        inputs[7]  = foodY;
+//        double distToFoodX = Math.abs(headBody.getX() - foodX);
+//        inputs[8]  = distToFoodX;
+//        double distToFoodY = Math.abs(headBody.getY() - foodY);
+//        inputs[9]  = distToFoodY;
+//        double L = 0.0;
+//        double R = 0.0;
+//        double U = 0.0;
+//        double D = 0.0;
+//        if (leftDirFree)
+//            L = 1.0;
+//        if (rightDirFree)
+//            R = 1.0;
+//        if (upDirFree)
+//            U = 1.0;
+//        if (downDirFree)
+//            D = 1.0;
+//        inputs[10] = L;
+//        inputs[11] = R;
+//        inputs[12] = U;
+//        inputs[13] = D;
+//        inputs[14] = -1.0;
+//
+//        normalizeInputs(inputs);
+//
+//        return inputs;
+//    }
     public double[] getInputs()
     {
-        double inputs[] = new double[15];
+        double inputs[] = new double[11];
         inputs[0]  = headBody.getX();
         inputs[1]  = headBody.getY();
-        inputs[2]  = midBody.getX();
-        inputs[3]  = midBody.getY();
-        inputs[4]  = tailBody.getX();
-        inputs[5]  = tailBody.getY();
-        inputs[6]  = foodX;
-        inputs[7]  = foodY;
+        inputs[2]  = foodX;
+        inputs[3]  = foodY;
         double distToFoodX = Math.abs(headBody.getX() - foodX);
-        inputs[8]  = distToFoodX;
+        inputs[4]  = distToFoodX;
         double distToFoodY = Math.abs(headBody.getY() - foodY);
-        inputs[9]  = distToFoodY;
+        inputs[5]  = distToFoodY;
         double L = 0.0;
         double R = 0.0;
         double U = 0.0;
@@ -241,11 +446,11 @@ public class SnakeGame extends JPanel
             U = 1.0;
         if (downDirFree)
             D = 1.0;
-        inputs[10] = L;
-        inputs[11] = R;
-        inputs[12] = U;
-        inputs[13] = D;
-        inputs[14] = -1.0;
+        inputs[6] = L;
+        inputs[7] = R;
+        inputs[8] = U;
+        inputs[9] = D;
+        inputs[10] = -1.0;
 
         normalizeInputs(inputs);
 
@@ -258,7 +463,7 @@ public class SnakeGame extends JPanel
         maxY = -1;
         minX = 999999;
         minY = 999999;
-        for (int i = 0; i <= 9; i++)
+        for (int i = 0; i <= 5; i++)
         {
             if (i % 2 == 0)
             {
@@ -275,7 +480,7 @@ public class SnakeGame extends JPanel
                     minY = inputs[i];
             }
         }
-        for (int i = 0; i <= 9; i++)
+        for (int i = 0; i <= 5; i++)
         {
             double numerator;
             double demoninator;
@@ -310,11 +515,11 @@ public class SnakeGame extends JPanel
         //set snake body info
         headBody.setX(x[0]);
         headBody.setY(y[0]);
-        Double halfPos = Math.floor(sizeXandY / 2);
-        midBody.setX(x[halfPos.intValue()]);
-        midBody.setY(y[halfPos.intValue()]);
-        tailBody.setX(x[sizeXandY - 1]);
-        tailBody.setY(y[sizeXandY - 1]);
+        Double halfPos = Math.ceil(sizeXandY / 2);
+//        midBody.setX(x[halfPos.intValue()]);
+//        midBody.setY(y[halfPos.intValue()]);
+//        tailBody.setX(x[sizeXandY - 1]);
+//        tailBody.setY(y[sizeXandY - 1]);
 
         foodXY.setX(foodX);
         foodXY.setY(foodY);
@@ -373,7 +578,8 @@ public class SnakeGame extends JPanel
         if (downDirFree) {
             int tempYY = tempY + DOT_SIZE;
             for (int i = dots; i > 0; i--)
-                if ((i > 0) && (tempX == x[i]) && (tempYY == y[i])) {
+                if ((i > 0) && (tempX == x[i]) && (tempYY == y[i]))
+                {
                     downDirFree = false;
                     break;
                 }
@@ -431,6 +637,8 @@ public class SnakeGame extends JPanel
         if (downDirection)
             y[0] += DOT_SIZE;
 
+        stepsTaken++;
+        stepsTakenSinceLastFood++;
         updatePostitions();
 
     }
@@ -474,8 +682,10 @@ public class SnakeGame extends JPanel
         {
             dots++;
             snakeLength++;
+            applesEaten++;
             placeApple();
-            restartTimer();
+            restartFoodTimer();
+            stepsTakenSinceLastFood = 0;
         }
     }
 
@@ -483,9 +693,26 @@ public class SnakeGame extends JPanel
     private static void placeApple()
     {
         int R = (int) (Math.random() * randomPos);
-        foodX = (R*DOT_SIZE+5);
+        foodX = (R * DOT_SIZE + 5);
         R = (int) (Math.random() * randomPos);
-        foodY = (R*DOT_SIZE+5);
+        foodY = (R * DOT_SIZE + 5);
+        while (checkIfFoodPlacedOnBody())
+        {
+            R = (int) (Math.random() * randomPos);
+            foodX = (R * DOT_SIZE + 5);
+            R = (int) (Math.random() * randomPos);
+            foodY = (R * DOT_SIZE + 5);
+        }
+    }
+
+    private static boolean checkIfFoodPlacedOnBody()
+    {
+        for (int i = dots; i > 0; i--)
+        {
+            if (foodX == x[i] && foodY == y[i])
+                return true;
+        }
+        return false;
     }
 
     //load the dots that will be drawn on the paint method.

@@ -17,7 +17,7 @@ public class neuralNetWork
         vWeights = new double[noHiddenNeurons][noInputsNeurons]; //2D array for weights going from every input node, to every hidden node.
         wWeights = new double[noOutputNeurons][noHiddenNeurons]; //2D array for weights going from every hidden node to every output node
 
-        setWeightsOfNN();
+        //setWeightsOfNN();
     }
 
     //will take the weights from the GA and set them here.
@@ -29,14 +29,14 @@ public class neuralNetWork
     }
 
     //takes the inputs and then uses the NN to get a move out.
-    public int getNextMove(double[] inputs)
+    public int getNextMove(int curDir, double[] inputs)
     {
         double highestActual = 0;
         int toOutput = 0;
         for (int j = 0; j <= noOutputNeurons - 1; j++)
         {
             double actual = calcuateFNetHiddenAndOutput(inputs).storedOutputNets[j];
-            if (actual > highestActual)
+            if (actual > highestActual  && curDir != j)
             {
                 highestActual = actual;
                 toOutput = j;
