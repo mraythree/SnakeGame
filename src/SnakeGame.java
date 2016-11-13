@@ -1,7 +1,13 @@
+import jxl.Workbook;
+import jxl.write.*;
+
 import javax.swing.*;
 import java.awt.*;
+import java.awt.Label;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
+import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.Random;
@@ -14,10 +20,12 @@ public class SnakeGame extends JPanel
 {
     //constant variables
     private static final int DOT_SIZE = 15;
+    private static final int populationSize = 50;
     private static final int boarderHeight = 425;
     private static final int boarderWidth = 425;
     private static final int ALL_DOTS = 600;
     private static final int randomPos = 27; //seed value for randoms
+    private static final int noStepsTakenTillStallAllowed = 100;
 
     //pulic static vars
     public static int noInputsNeurons = 11;
@@ -78,12 +86,17 @@ public class SnakeGame extends JPanel
 
     public static SnakeGame snakeGame;
 
-//    private Timer timer;
-//    private final int DELAY = 140;
-
+    WritableSheet writableSheet;
+    WritableWorkbook writableWorkbook;
     //constructor
-    public SnakeGame()
-    {
+    public SnakeGame() throws IOException, WriteException {
+        //initialze Excel
+        String path = "C:\\Users\\Adriaan\\Desktop\\WRCI Results.xls";
+        File exlFile = new File(path);
+        writableWorkbook = Workbook.createWorkbook(exlFile);
+        writableSheet = writableWorkbook.createSheet("Sheet1", 0);
+        jxl.write.Label label = new jxl.write.Label(0, 0, "WRCI Results");
+        writableSheet.addCell(label);
         //initialize variables
         inGame = true;
         snakeLength = 3;
@@ -107,11 +120,18 @@ public class SnakeGame extends JPanel
         initializeGame();
     }
 
+    //used by the Main class.
     public static SnakeGame getClassInstance()
     {
         if (snakeGame == null)
         {
-            snakeGame = new SnakeGame();
+            try {
+                snakeGame = new SnakeGame();
+            } catch (IOException e) {
+                e.printStackTrace();
+            } catch (WriteException e) {
+                e.printStackTrace();
+            }
             return snakeGame;
         }
         return snakeGame;
@@ -120,76 +140,85 @@ public class SnakeGame extends JPanel
     public void runGame() throws InterruptedException
     {
         //console lets us see the result from each iteration
-       // Console console = new Console();
+        Console console = new Console();
         //the first while loop runs on the iteration of each game. at the end of each iteration info is passed back and fourth to the GA.
-        GeneticTraining ga = new GeneticTraining(50); //takes in the population size
+        GeneticTraining ga = new GeneticTraining(populationSize); //takes in the population size
         //set up the NN with the info from the GA
         neuralNetWork NN = new neuralNetWork();
-        Chromosone c;
+        Chromosone c; //this will be used to keep track of the current chromozone we are on.
         iterationCounter = 0;
-        maxSnakeLength = 3;
-        while (iterationCounter < 100000)
+        maxSnakeLength = 3; //always starts with length 3.
+        while (iterationCounter < 50000)
         {
             c = ga.getCurChromosone();
             NN.setWeightsOfNN(c.getvWeights(), c.getwWeights());
 
-            //restart stall counter.
+            //restart stall counter. --> these have been depricated. working with number of steps is better.
             restartFoodTimer();
             restartGameTimer();
             snakeLength = 3;
             applesEaten = 0;
+            //gives us updates in console.
             if (iterationCounter % 20000 == 0)
                 System.out.println("Max length achieved so far: " + maxSnakeLength);
 
             //this while loop runs the actual game within each iteration.
             while (inGame)
             {
-                if (iterationCounter % 20000 == 0 || snakeLength > 25)
-                    TimeUnit.MILLISECONDS.sleep(100); //so we can see what the snake is doing. reduce this to make the snake go faster.
+                //every 20 thousand iterations you can see how the snake is doing.
+                //if the snake reachers a length greater than 25, we will also see what it is doing.
+                //reduce the sleep time, to make the snake move faster.
+                if (iterationCounter % 20000 == 0 || snakeLength > 29)
+                    TimeUnit.MILLISECONDS.sleep(100);
 
-
-//                if (getElapsedTimeSinceLastFood() > 100)
-//                    inGame = false; //go to the next game iteration if the game stalls.
-//                if (getElapsedTimeSinceLastFood() > 1000 && (iterationCounter % 1000 != 0))
-//                    inGame = false; //go to the next game iteration if the game stalls.
-//                else if (getElapsedTimeSinceLastFood() > 10000 && iterationCounter % 1000 == 0)
-//                    inGame = false;
+                //this is also deprecated, as invalid moves should not be made. leave just in case.
                 if (invalidMove)
                     inGame = false;
 
-                double[] inputs = getInputs(); //get new inputs for the NN for the next move.
-                int curDir = 0;
+                //we want to know which direction we are going in, so that if the NN tries to go that way, we say "NO BITCH", and take the next best move. the game stalls if the NN tries to go in the opposite direction as this is not allowed, but the inputs don't change, so the NN will continuing trying.
+                int currentOppositeDir = 0;
                 if (leftDirection)
-                    curDir = 1;
+                    currentOppositeDir = 1;
                 else if (rightDirection)
-                    curDir = 0;
+                    currentOppositeDir = 0;
                 else if (upDirection)
-                    curDir = 3;
+                    currentOppositeDir = 3;
                 else if (downDirection)
-                    curDir = 2;
-                int Move = NN.getNextMove(curDir, inputs); //calculate the next move.
+                    currentOppositeDir = 2;
+                double[] inputs = getInputs(); //get new inputs for the NN for the next move.
+                int Move = NN.getNextMove(currentOppositeDir, inputs); //calculate the next move.
 
-                managemove(Move); //change the direction
+                managemove(Move); //find out in which way the NN wants us to go.
 
                 handleMovement(); //actually move the snake.
                 checkEatenApple(); //did the snake find food? if so increase its length and reset the stall counter.
-                if (stepsTakenSinceLastFood > 130)
+
+                //did the snake just learn how to survive without the need to find food? kill it dead. game stalled.
+                //this value might need to be changed to something dynamic, as when the size increases, it might need more steps.
+                if (stepsTakenSinceLastFood > noStepsTakenTillStallAllowed)
                 {
                     inGame = false;
                     c.stalled = true;
                 }
-                checkForCollision(); //did the snake collide with anything? wall or body.
-                if (iterationCounter % 20000 == 0 || snakeLength > 25)
+                checkForCollision(); //did the snake collide with anything? wall or body? if so, kill it.
+                if (iterationCounter % 20000 == 0 || snakeLength > 29) //we don't show what is going on the screen in "simulation mode", takes too long.
                     repaint(); //refresh screen.
             }
+            //set the chromosone's fitness. //use of time has been depricated.
             c.setFitness(getElapsedGameTime(), snakeLength);
             //use the console to update what happened in the current iteration.
             //console.addToConsole("Iteation: " + iterationCounter + "  Length: " + snakeLength);
             System.out.println("Iteation: " + iterationCounter + "  Length: " + snakeLength);
             if (snakeLength > maxSnakeLength)
+            {
                 maxSnakeLength = snakeLength;
+                console.addToConsole("New Highscoore of: " + maxSnakeLength + ", in iteration: " + iterationCounter);
+            }
+
+
+
             iterationCounter++;
-            //if ((iterationCounter % ga.populationSize == 0) && (iterationCounter != 0))
+            //if we have been through a population of chromosone's its time to do crossovers and mutations, etc.
             if (iterationCounter % ga.populationSize == 0)
                 ga.Train();
             //move onto the next chromosone. this wraps around to the beginning once the population size is reached.
@@ -198,11 +227,94 @@ public class SnakeGame extends JPanel
             initializeGame();
         }
 
+        //write to excel
+        writeExcelResults(ga);
+        try {
+            writableWorkbook.write();
+            writableWorkbook.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        } catch (WriteException e) {
+            e.printStackTrace();
+        }
+
+
+    }
+
+    private void writeExcelResults(GeneticTraining ga)
+    {
+        jxl.write.Label label;
+        try {
+            // LABEL: (COLOUMN, ROW, STRING);
+            //NN Details
+            label = new jxl.write.Label(0, 2, "NN Details");
+            writableSheet.addCell(label);
+            label = new jxl.write.Label(0, 3, "Input Neurons");
+            writableSheet.addCell(label);
+            label = new jxl.write.Label(0, 4, "Hidden Neurons");
+            writableSheet.addCell(label);
+            label = new jxl.write.Label(0, 5, "Output Neurons");
+            writableSheet.addCell(label);
+            label = new jxl.write.Label(1, 3, String.valueOf(noInputsNeurons));
+            writableSheet.addCell(label);
+            label = new jxl.write.Label(1, 4, String.valueOf(noHiddenNeurons));
+            writableSheet.addCell(label);
+            label = new jxl.write.Label(1, 5, String.valueOf(noOutputNeurons));
+            writableSheet.addCell(label);
+
+            //Game Details
+            label = new jxl.write.Label(3, 2, "Game Details");
+            writableSheet.addCell(label);
+            label = new jxl.write.Label(3, 3, "No Steps taken until stall");
+            writableSheet.addCell(label);
+            label = new jxl.write.Label(3, 2, "No Iterations over all chromosomes");
+            writableSheet.addCell(label);
+            label = new jxl.write.Label(3, 2, "Max Snake Length Achieved");
+            writableSheet.addCell(label);
+            label = new jxl.write.Label(4, 3, String.valueOf(noStepsTakenTillStallAllowed));
+            writableSheet.addCell(label);
+            label = new jxl.write.Label(4, 2, String.valueOf(iterationCounter));
+            writableSheet.addCell(label);
+            label = new jxl.write.Label(4, 2, String.valueOf(maxSnakeLength));
+            writableSheet.addCell(label);
+
+            //GA Details
+            label = new jxl.write.Label(6, 2, "GA Details");
+            writableSheet.addCell(label);
+            label = new jxl.write.Label(6, 3, "Population Size");
+            writableSheet.addCell(label);
+            label = new jxl.write.Label(6, 4, "Mutation Rate");
+            writableSheet.addCell(label);
+            label = new jxl.write.Label(6, 5, "Hall Of Fame Size");
+            writableSheet.addCell(label);
+            label = new jxl.write.Label(6, 6, "Tournament Size");
+            writableSheet.addCell(label);
+            label = new jxl.write.Label(6, 7, "Min Search Space");
+            writableSheet.addCell(label);
+            label = new jxl.write.Label(6, 8, "Max Search Space");
+            writableSheet.addCell(label);
+            label = new jxl.write.Label(7, 3, String.valueOf(populationSize));
+            writableSheet.addCell(label);
+            label = new jxl.write.Label(7, 4, String.valueOf(ga.mutationRate));
+            writableSheet.addCell(label);
+            label = new jxl.write.Label(7, 5, String.valueOf(ga.hallOfFameSize));
+            writableSheet.addCell(label);
+            label = new jxl.write.Label(7, 6, String.valueOf(ga.tournamentSize));
+            writableSheet.addCell(label);
+            label = new jxl.write.Label(7, 7, String.valueOf(minSearchSpace));
+            writableSheet.addCell(label);
+            label = new jxl.write.Label(7, 8, String.valueOf(maxSearchSpace));
+            writableSheet.addCell(label);
+        }
+        catch (WriteException e)
+        {
+            e.printStackTrace();
+        }
     }
 
     private void managemove(int Move)
     {
-
+        //check for invalid moves. this should never happen now.
         if ((Move == 0) && (rightDirection)) //move left
         {
             invalidMove = true;
@@ -220,8 +332,7 @@ public class SnakeGame extends JPanel
             invalidMove = true;
         }
 
-        // this is tricky
-        //if the NN decides the snake should go left when it was moving in a right direction (illegal move) I can't just stop it from making that move, because on the next iteration, the NN will get the same inputs and then make the same decision as the last illegal move.
+       //set the new direction
         if ((Move == 0) && (!rightDirection)) //move left
         {
             leftDirection = true;
@@ -248,8 +359,7 @@ public class SnakeGame extends JPanel
         }
     }
 
-    //start with a length of 3. place the food on the board.
-    // -> we don't have a check if the food is on the body at this point -> we need to ensure that the food does not intercept the body on initialization.
+    //start with a length of 3. place the food on the board. food will never be placed somewhere on the snake's body.
     private void initializeGame()
     {
         inGame = true;
@@ -282,11 +392,6 @@ public class SnakeGame extends JPanel
             y[1] = headpos;
             x[2] = headpos - 30;
             y[2] = headpos;
-//            for (int i = 0; i <= dots -1; i++)
-//            {
-//                x[i] = headpos - i * 15;
-//                y[i] = headpos;
-//            }
         }
         else if (dir == 2) //going left
         {
@@ -297,11 +402,6 @@ public class SnakeGame extends JPanel
             y[1] = headpos;
             x[2] = headpos + 30;
             y[2] = headpos;
-//            for (int i = 0; i <= dots -1; i++)
-//            {
-//                x[i] = headpos + i * 15;
-//                y[i] = headpos;
-//            }
         }
         else if (dir == 3) //going up
         {
@@ -312,20 +412,10 @@ public class SnakeGame extends JPanel
             y[1] = headpos + 15;
             x[2] = headpos;
             y[2] = headpos + 30;
-//            for (int i = 0; i <= dots -1; i++)
-//            {
-//                x[i] = headpos;
-//                y[i] = headpos + i * 15;
-//            }
         }
         else if (dir == 4) //going down
         {
             downDirection = true;
-//            for (int i = 0; i <= dots -1; i++)
-//            {
-//                x[i] = headpos;
-//                y[i] = headpos - i * 15;
-//            }
             x[0] = headpos;
             y[0] = headpos;
             x[1] = headpos;
@@ -337,6 +427,7 @@ public class SnakeGame extends JPanel
         updatePostitions();
     }
 
+    //used to find a random pos on the board.
     public int randomInt0and25()
     {
         Random r = new Random();
@@ -346,6 +437,7 @@ public class SnakeGame extends JPanel
         return (randomVal * 15) + 5;
     }
 
+    //use for a random starting direction.
     public int randomInt0and3()
     {
         Random r = new Random();
@@ -386,43 +478,6 @@ public class SnakeGame extends JPanel
     }
 
     //this is what gets passed to the NN for it to make a decision
-//    public double[] getInputs()
-//    {
-//        double inputs[] = new double[15];
-//        inputs[0]  = headBody.getX();
-//        inputs[1]  = headBody.getY();
-//        inputs[2]  = midBody.getX();
-//        inputs[3]  = midBody.getY();
-//        inputs[4]  = tailBody.getX();
-//        inputs[5]  = tailBody.getY();
-//        inputs[6]  = foodX;
-//        inputs[7]  = foodY;
-//        double distToFoodX = Math.abs(headBody.getX() - foodX);
-//        inputs[8]  = distToFoodX;
-//        double distToFoodY = Math.abs(headBody.getY() - foodY);
-//        inputs[9]  = distToFoodY;
-//        double L = 0.0;
-//        double R = 0.0;
-//        double U = 0.0;
-//        double D = 0.0;
-//        if (leftDirFree)
-//            L = 1.0;
-//        if (rightDirFree)
-//            R = 1.0;
-//        if (upDirFree)
-//            U = 1.0;
-//        if (downDirFree)
-//            D = 1.0;
-//        inputs[10] = L;
-//        inputs[11] = R;
-//        inputs[12] = U;
-//        inputs[13] = D;
-//        inputs[14] = -1.0;
-//
-//        normalizeInputs(inputs);
-//
-//        return inputs;
-//    }
     public double[] getInputs()
     {
         double inputs[] = new double[11];
@@ -457,13 +512,15 @@ public class SnakeGame extends JPanel
         return inputs;
     }
 
+    //we are using a sigmoid activation function. all inputs must be normalized.
+    //x and y are normalized to their own x and y mins and maxes. this ensure that their distances don't affect each other.
     private void normalizeInputs(double[] inputs)
     {
         maxX = -1;
         maxY = -1;
         minX = 999999;
         minY = 999999;
-        for (int i = 0; i <= 5; i++)
+        for (int i = 0; i <= 7; i++)
         {
             if (i % 2 == 0)
             {
@@ -480,7 +537,7 @@ public class SnakeGame extends JPanel
                     minY = inputs[i];
             }
         }
-        for (int i = 0; i <= 5; i++)
+        for (int i = 0; i <= 7; i++)
         {
             double numerator;
             double demoninator;
@@ -502,7 +559,7 @@ public class SnakeGame extends JPanel
         }
     }
 
-    //for the NN inputs
+    //take the snake's current pos for everything that we need for the NN inputs
     private static void updatePostitions() {
         //get the length of the snake
         int sizeXandY = 0;
@@ -518,8 +575,8 @@ public class SnakeGame extends JPanel
         Double halfPos = Math.ceil(sizeXandY / 2);
 //        midBody.setX(x[halfPos.intValue()]);
 //        midBody.setY(y[halfPos.intValue()]);
-//        tailBody.setX(x[sizeXandY - 1]);
-//        tailBody.setY(y[sizeXandY - 1]);
+//        tailBody.setX(x[snakeLength]);
+//        tailBody.setY(y[snakeLength]);
 
         foodXY.setX(foodX);
         foodXY.setY(foodY);
@@ -666,12 +723,10 @@ public class SnakeGame extends JPanel
             inGame = false;
     }
 
-    //what to do when the game is over --> need to pass results back to NN -> probably via an interface.
+    //this is not used for anything at the moment.
     private void gameOver(Graphics g)
     {
-        //send info to GA.
-        ArrayList<Integer> GAInfo = new ArrayList<>();
-        //GAInfo.add()
+
     }
 
     //have we eaten an apple? if so, increase length and place a new apple.
@@ -689,7 +744,7 @@ public class SnakeGame extends JPanel
         }
     }
 
-    //random location for the apple.
+    //random location for the apple, that is not on the snake's body
     private static void placeApple()
     {
         int R = (int) (Math.random() * randomPos);
@@ -726,7 +781,7 @@ public class SnakeGame extends JPanel
         imgApple = tempIcon.getImage();
     }
 
-    //this is not used anymore as snake controls itself.
+    //this is not used anymore as snake controls itself. if you want to be an asshole you can interrupt the snake's game. but maybe let him, you know? do his thang.
     private class TAdapter extends KeyAdapter
     {
         //what to do when a key is pressed.

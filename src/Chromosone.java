@@ -55,9 +55,9 @@ public class Chromosone
         this.stepsTaken = SnakeGame.stepsTaken;
         double out;
         if (stalled)
-            out = (stepsTaken/4) + (snakeLength * 1000000.0);
+            out = (stepsTaken/4) + (snakeLength * 100000.0);
         else
-            out = (stepsTaken/2) + (snakeLength * 1000000.0);
+            out = (stepsTaken/2) + (snakeLength * 100000.0);
 
         //double out = timeTaken + (snakeLength * 10000000);
         //double out = snakeLength * 1.0;

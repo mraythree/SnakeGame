@@ -32,8 +32,10 @@ public class GeneticTraining
         mutationRate = 10;
     }
 
+    //once a population of chomozones have been evaluated, do the GA.
     public void Train()
     {
+        //comparator is what we use to sort the list. we want to sort them in order of highest to lowest fitness.
         Comparator<Chromosone> comp = new Comparator<Chromosone>()
         {
             @Override
@@ -48,13 +50,13 @@ public class GeneticTraining
         };
 
         Collections.sort(chromosones, comp);
-        ArrayList<Chromosone> nextGen = new ArrayList<>();
-        for (int i = 0; i< hallOfFameSize; i++)
+        ArrayList<Chromosone> nextGen = new ArrayList<>(); //this will eventually be the new population of chromozones.
+        for (int i = 0; i< hallOfFameSize; i++) //let the first fittest individuals take the first slots to the halloffamesize counter.
         {
             nextGen.add(chromosones.get(i).clone());
         }
 
-        //cross add a child from the elite
+        //cross and mutate a child from the best 2 (this assumes that the halloffamesize is 2.
         Chromosone c1 = nextGen.get(0);
         Chromosone c2 = nextGen.get(1);
         Chromosone cross = crossover(c1, c2);
@@ -62,7 +64,7 @@ public class GeneticTraining
         //cross = mutatePositive(cross);
         nextGen.add(cross);
 
-        //for (int i = 0; i< 100-(hallOfFameSize+1); i++)
+        //do tournament selection for the rest of the population.
         for (int i = 0; i< populationSize-(hallOfFameSize+1); i++)
         {
             c1 = doTournamentSelection(chromosones, comp);
@@ -155,12 +157,12 @@ public class GeneticTraining
         return c;
     }
 
+    //get a value around 1 to move in.
     public double randomGauss()
     {
         Random r = new Random();
         double desiredStandardDeviation = 0.05;
         double desiredMean = 1;
-        double temp = r.nextGaussian()*desiredStandardDeviation+desiredMean;
         return r.nextGaussian()*desiredStandardDeviation+desiredMean;
     }
 
