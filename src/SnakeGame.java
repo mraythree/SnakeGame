@@ -45,6 +45,7 @@ public class SnakeGame extends JPanel
     private static boolean downDirection;
     private static boolean inGame;
 
+
     private static int dots;
     private static int foodX;
     private static int foodY;
@@ -85,12 +86,15 @@ public class SnakeGame extends JPanel
     private static boolean invalidMove;
 
     public static SnakeGame snakeGame;
+    public static boolean btnStoppedPushed;
 
-    WritableSheet writableSheet;
-    WritableWorkbook writableWorkbook;
+    private static WritableSheet writableSheet;
+    private static WritableWorkbook writableWorkbook;
+    private static Console console;
     //constructor
     public SnakeGame() throws IOException, WriteException {
         //initialze Excel
+        btnStoppedPushed = false;
         String path = "C:\\Users\\Adriaan\\Desktop\\WRCI Results.xls";
         File exlFile = new File(path);
         writableWorkbook = Workbook.createWorkbook(exlFile);
@@ -101,8 +105,6 @@ public class SnakeGame extends JPanel
         inGame = true;
         snakeLength = 3;
         headBody = new XYPair(0,0);
-//        midBody = new XYPair(0,0);
-//        tailBody = new XYPair(0,0);
         foodXY = new XYPair(0,0);
 
         //put the key listener in
@@ -126,7 +128,9 @@ public class SnakeGame extends JPanel
         if (snakeGame == null)
         {
             try {
+                //console lets us see the result from each iteration
                 snakeGame = new SnakeGame();
+                console = new Console();
             } catch (IOException e) {
                 e.printStackTrace();
             } catch (WriteException e) {
@@ -139,16 +143,14 @@ public class SnakeGame extends JPanel
 
     public void runGame() throws InterruptedException
     {
-        //console lets us see the result from each iteration
-        Console console = new Console();
-        //the first while loop runs on the iteration of each game. at the end of each iteration info is passed back and fourth to the GA.
+        //iteration of each game. at the end of each iteration info is passed back and fourth to the GA.
         GeneticTraining ga = new GeneticTraining(populationSize); //takes in the population size
         //set up the NN with the info from the GA
         neuralNetWork NN = new neuralNetWork();
         Chromosone c; //this will be used to keep track of the current chromozone we are on.
         iterationCounter = 0;
         maxSnakeLength = 3; //always starts with length 3.
-        while (iterationCounter < 50000)
+        while (iterationCounter < 50000 && !btnStoppedPushed)
         {
             c = ga.getCurChromosone();
             NN.setWeightsOfNN(c.getvWeights(), c.getwWeights());
@@ -226,6 +228,7 @@ public class SnakeGame extends JPanel
             //initialize the next iteration
             initializeGame();
         }
+        console.addToConsole("Game Stopped!");
 
         //write to excel
         writeExcelResults(ga);
@@ -237,8 +240,6 @@ public class SnakeGame extends JPanel
         } catch (WriteException e) {
             e.printStackTrace();
         }
-
-
     }
 
     private void writeExcelResults(GeneticTraining ga)
@@ -360,7 +361,7 @@ public class SnakeGame extends JPanel
     }
 
     //start with a length of 3. place the food on the board. food will never be placed somewhere on the snake's body.
-    private void initializeGame()
+    private static void initializeGame()
     {
         inGame = true;
         dots = 3;
@@ -428,7 +429,7 @@ public class SnakeGame extends JPanel
     }
 
     //used to find a random pos on the board.
-    public int randomInt0and25()
+    public static int randomInt0and25()
     {
         Random r = new Random();
         int min = 3;
@@ -438,7 +439,7 @@ public class SnakeGame extends JPanel
     }
 
     //use for a random starting direction.
-    public int randomInt0and3()
+    public static int randomInt0and3()
     {
         Random r = new Random();
         int min = 0;
@@ -789,15 +790,8 @@ public class SnakeGame extends JPanel
         //will we hit the body or wall?
         //okay, cool, time to move.
         //repaint -> update the board.
-        public void keyPressed()
-        {
-            if (inGame)
-            {
-                checkEatenApple();
-                handleMovement();
-                checkForCollision();
-            }
-            repaint();
+        public void keyPressed() {
+
         }
 
         @Override
