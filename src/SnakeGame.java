@@ -385,7 +385,9 @@ public class SnakeGame extends JPanel
         //snake needs to start in a random pos
         //pick direction
         int dir = randomInt0and3() + 1;
-        int headpos = randomInt0and25();
+        //always start in the centre of the board.
+        int headpos = (13* 15) + 5;
+        //int headpos = randomInt0and25();
         if (dir == 1) //going right
         {
             rightDirection = true;
@@ -433,10 +435,11 @@ public class SnakeGame extends JPanel
     //used to find a random pos on the board.
     public static int randomInt0and25()
     {
-        Random r = new Random();
-        int min = 3;
-        int max = 21;
-        int randomVal = r.nextInt((max - min)) + min;
+//        Random r = new Random();
+//        int min = 3;
+//        int max = 21;
+//        int randomVal = r.nextInt((max - min)) + min;
+        int randomVal = 13;
         return (randomVal * 15) + 5;
     }
 
