@@ -28,8 +28,8 @@ public class SnakeGame extends JPanel
     private static final int noStepsTakenTillStallAllowed = 100;
 
     //pulic static vars
-    public static int noInputsNeurons = 11;
-    public static int noHiddenNeurons = 5;
+    public static int noInputsNeurons = 15;
+    public static int noHiddenNeurons = 7;
     public static int noOutputNeurons = 4;
     public static int minSearchSpace = -10000;
     public static int maxSearchSpace = 10000;
@@ -70,8 +70,8 @@ public class SnakeGame extends JPanel
 
     //positions of things
     private static XYPair headBody;
-//    private static XYPair midBody;
-//    private static XYPair tailBody;
+    private static XYPair midBody;
+    private static XYPair tailBody;
     private static XYPair foodXY;
     private static boolean leftDirFree;
     private static boolean rightDirFree;
@@ -105,6 +105,8 @@ public class SnakeGame extends JPanel
         inGame = true;
         snakeLength = 3;
         headBody = new XYPair(0,0);
+        midBody = new XYPair(0,0);
+        tailBody = new XYPair(0,0);
         foodXY = new XYPair(0,0);
 
         //put the key listener in
@@ -150,7 +152,7 @@ public class SnakeGame extends JPanel
         Chromosone c; //this will be used to keep track of the current chromozone we are on.
         iterationCounter = 0;
         maxSnakeLength = 3; //always starts with length 3.
-        while (iterationCounter < 50000 && !btnStoppedPushed)
+        while (iterationCounter < 200001 && !btnStoppedPushed)
         {
             c = ga.getCurChromosone();
             NN.setWeightsOfNN(c.getvWeights(), c.getwWeights());
@@ -320,15 +322,15 @@ public class SnakeGame extends JPanel
         {
             invalidMove = true;
         }
-        else if ((Move == 1) && (leftDirection)) //move left
+        else if ((Move == 1) && (leftDirection)) //move right
         {
             invalidMove = true;
         }
-        else if ((Move == 2) && (downDirection)) //move left
+        else if ((Move == 2) && (downDirection)) //move down
         {
             invalidMove = true;
         }
-        else if ((Move == 3) && (upDirection)) //move left
+        else if ((Move == 3) && (upDirection)) //move up
         {
             invalidMove = true;
         }
@@ -479,17 +481,54 @@ public class SnakeGame extends JPanel
     }
 
     //this is what gets passed to the NN for it to make a decision
+//    public double[] getInputs()
+//    {
+//        double inputs[] = new double[11];
+//        inputs[0]  = headBody.getX();
+//        inputs[1]  = headBody.getY();
+//        inputs[2]  = foodX;
+//        inputs[3]  = foodY;
+//        double distToFoodX = Math.abs(headBody.getX() - foodX);
+//        inputs[4]  = distToFoodX;
+//        double distToFoodY = Math.abs(headBody.getY() - foodY);
+//        inputs[5]  = distToFoodY;
+//        double L = 0.0;
+//        double R = 0.0;
+//        double U = 0.0;
+//        double D = 0.0;
+//        if (leftDirFree)
+//            L = 1.0;
+//        if (rightDirFree)
+//            R = 1.0;
+//        if (upDirFree)
+//            U = 1.0;
+//        if (downDirFree)
+//            D = 1.0;
+//        inputs[6] = L;
+//        inputs[7] = R;
+//        inputs[8] = U;
+//        inputs[9] = D;
+//        inputs[10] = -1.0;
+//
+//        normalizeInputs(inputs);
+//
+//        return inputs;
+//    }
     public double[] getInputs()
     {
-        double inputs[] = new double[11];
+        double inputs[] = new double[15];
         inputs[0]  = headBody.getX();
         inputs[1]  = headBody.getY();
-        inputs[2]  = foodX;
-        inputs[3]  = foodY;
+        inputs[2]  = midBody.getX();
+        inputs[3]  = midBody.getY();
+        inputs[4]  = tailBody.getX();
+        inputs[5]  = tailBody.getY();
+        inputs[6]  = foodX;
+        inputs[7]  = foodY;
         double distToFoodX = Math.abs(headBody.getX() - foodX);
-        inputs[4]  = distToFoodX;
+        inputs[8]  = distToFoodX;
         double distToFoodY = Math.abs(headBody.getY() - foodY);
-        inputs[5]  = distToFoodY;
+        inputs[9]  = distToFoodY;
         double L = 0.0;
         double R = 0.0;
         double U = 0.0;
@@ -502,11 +541,11 @@ public class SnakeGame extends JPanel
             U = 1.0;
         if (downDirFree)
             D = 1.0;
-        inputs[6] = L;
-        inputs[7] = R;
-        inputs[8] = U;
-        inputs[9] = D;
-        inputs[10] = -1.0;
+        inputs[10] = L;
+        inputs[11] = R;
+        inputs[12] = U;
+        inputs[13] = D;
+        inputs[14] = -1.0;
 
         normalizeInputs(inputs);
 
@@ -521,7 +560,7 @@ public class SnakeGame extends JPanel
         maxY = -1;
         minX = 999999;
         minY = 999999;
-        for (int i = 0; i <= 7; i++)
+        for (int i = 0; i <= 9; i++)
         {
             if (i % 2 == 0)
             {
@@ -538,7 +577,7 @@ public class SnakeGame extends JPanel
                     minY = inputs[i];
             }
         }
-        for (int i = 0; i <= 7; i++)
+        for (int i = 0; i <= 9; i++)
         {
             double numerator;
             double demoninator;
@@ -573,11 +612,17 @@ public class SnakeGame extends JPanel
         //set snake body info
         headBody.setX(x[0]);
         headBody.setY(y[0]);
-        Double halfPos = Math.ceil(sizeXandY / 2);
-//        midBody.setX(x[halfPos.intValue()]);
-//        midBody.setY(y[halfPos.intValue()]);
-//        tailBody.setX(x[snakeLength]);
-//        tailBody.setY(y[snakeLength]);
+        Double halfPos = snakeLength / 2.0;
+        String temp = String.valueOf(halfPos);
+        if (temp.contains(".5"))
+            halfPos = halfPos + 0.5;
+        int hp = Integer.valueOf(halfPos.intValue()) - 1; //indexes start at a different places
+        int tempX = x[hp];
+        int tempY = y[hp];
+        midBody.setX(x[hp]);
+        midBody.setY(y[hp]);
+        tailBody.setX(x[snakeLength]);
+        tailBody.setY(y[snakeLength]);
 
         foodXY.setX(foodX);
         foodXY.setY(foodY);
@@ -607,8 +652,8 @@ public class SnakeGame extends JPanel
             downDirFree = false;
         //rule out moving into the body.
         //check to the left
-        int tempX = x[0];
-        int tempY = y[0];
+        tempX = x[0];
+        tempY = y[0];
         if (leftDirFree) {
             int tempXX = tempX - DOT_SIZE;
             for (int i = dots; i > 0; i--)

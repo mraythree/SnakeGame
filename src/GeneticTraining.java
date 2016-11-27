@@ -107,7 +107,7 @@ public class GeneticTraining
                 {
                     if (randomInt1andPopSize() > populationSize/2) //50% chance
                     {
-                        if (j > 5)
+                        if (j > 7)
                             diff = randomGauss();
                         else
                             //diff = R.nextDouble() * minSearchSpace;
@@ -115,7 +115,7 @@ public class GeneticTraining
                     }
                     else
                     {
-                        if (j > 5)
+                        if (j > 7)
                             diff = randomGauss();
                         else
                             //diff = R.nextDouble() * maxSearchSpace;
